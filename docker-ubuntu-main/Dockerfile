@@ -68,4 +68,24 @@ RUN printf '%s\n' \
 
 EXPOSE 5901 6080
 
-CMD ["bash", "-c", "rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1; vncserver :1 -localhost no -SecurityTypes None -geometry 1920x1080; openssl req -new -newkey rsa:2048 -nodes -x509 -subj '/C=US/ST=State/L=City/O=Docker/CN=localhost' -keyout /tmp/novnc.pem -out /tmp/novnc.pem -days 365; websockify --web=/usr/share/novnc --cert=/tmp/novnc.pem 6080 localhost:5901"]
+CMD ["bash", "-c", "\
+  mkdir -p /root/.vnc && \
+  rm -f /tmp/.X1-lock && \
+  rm -f /tmp/.X11-unix/X1 && \
+  tigervncserver :1 \
+    -localhost no \
+    -SecurityTypes None \
+    -geometry 1920x1080 \
+    -depth 24 && \
+  sleep 3 && \
+  ss -lntp | grep ':5901' && \
+  openssl req -new -newkey rsa:2048 -nodes -x509 \
+    -subj '/C=US/ST=State/L=City/O=Docker/CN=localhost' \
+    -keyout /tmp/novnc.pem \
+    -out /tmp/novnc.pem \
+    -days 365 && \
+  websockify \
+    --web=/usr/share/novnc \
+    --cert=/tmp/novnc.pem \
+    6080 localhost:5901 \
+"]
