@@ -28,23 +28,20 @@ RUN apt update -y && \
     x11-xserver-utils \
     x11-apps
 
-RUN apt install -y software-properties-common
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg && \
+    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
+    https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg && \
+    curl -fsSLo /etc/apt/sources.list.d/brave-browser-release.sources \
+    https://brave-browser-apt-release.s3.brave.com/brave-browser.sources && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends brave-browser && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN add-apt-repository ppa:mozillateam/ppa -y
-
-RUN echo 'Package: *' >> /etc/apt/preferences.d/mozilla-firefox
-
-RUN echo 'Pin: release o=LP-PPA-mozillateam' \
-    >> /etc/apt/preferences.d/mozilla-firefox
-
-RUN echo 'Pin-Priority: 1001' \
-    >> /etc/apt/preferences.d/mozilla-firefox
-
-RUN echo 'Unattended-Upgrade::Allowed-Origins:: "LP-PPA-mozillateam:jammy";' \
-    | tee /etc/apt/apt.conf.d/51unattended-upgrades-firefox
-
-RUN apt update -y && \
-    apt install -y firefox
 
 RUN apt update -y && \
     apt install -y xubuntu-icon-theme
