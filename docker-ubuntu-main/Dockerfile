@@ -19,17 +19,17 @@ RUN apt-get update && \
     x11-apps \
     vim \
     net-tools \
+    iproute2 \
     curl \
     wget \
     git \
     tzdata \
     openssl \
-    software-properties-common \
-    ca-certificates \
     firefox \
     xubuntu-icon-theme && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
 
 # تثبيت ثيم Windows 10
 RUN git clone --depth 1 \
