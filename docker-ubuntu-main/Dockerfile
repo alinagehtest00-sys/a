@@ -1,29 +1,71 @@
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update -y && apt install --no-install-recommends -y xfce4 xfce4-goodies tigervnc-standalone-server novnc websockify sudo xterm init systemd snapd vim net-tools curl wget git tzdata
-RUN apt update -y && apt install -y dbus-x11 x11-utils x11-xserver-utils x11-apps
-RUN apt install software-properties-common -y
-RUN add-apt-repository ppa:mozillateam/ppa -y
-RUN echo 'Package: *' >> /etc/apt/preferences.d/mozilla-firefox
-RUN echo 'Pin: release o=LP-PPA-mozillateam' >> /etc/apt/preferences.d/mozilla-firefox
-RUN echo 'Pin-Priority: 1001' >> /etc/apt/preferences.d/mozilla-firefox
-RUN echo 'Unattended-Upgrade::Allowed-Origins:: "LP-PPA-mozillateam:jammy";' | tee /etc/apt/apt.conf.d/51unattended-upgrades-firefox
-RUN apt update -y && apt install -y firefox
-RUN apt update -y && apt install -y xubuntu-icon-theme
-RUN mkdir -p /usr/share/backgrounds/xfce /usr/share/xfce4/backdrops && \
-    wget --no-check-certificate "https://b.top4top.io/p_3853l6za61.jpg" -O /usr/share/backgrounds/custom.jpg && \
-    find /usr/share/backgrounds/ /usr/share/xfce4/backdrops/ -type f \( -iname "*.jpg" -o -iname "*.png" -o -iname "*.svg" \) -exec cp /usr/share/backgrounds/custom.jpg {} \;
-RUN git clone https://github.com/B00merang-Project/Windows-10.git /usr/share/themes/Windows-10 && \
-    git clone https://github.com/B00merang-Project/Windows-10-Icons.git /usr/share/icons/Windows-10 && \
-    mkdir -p /etc/xdg/autostart && \
-    echo "[Desktop Entry]" > /etc/xdg/autostart/set-win-theme.desktop && \
-    echo "Type=Application" >> /etc/xdg/autostart/set-win-theme.desktop && \
-    echo "Exec=sh -c \"xfconf-query -c xsettings -p /Net/ThemeName -s Windows-10; xfconf-query -c xsettings -p /Net/IconThemeName -s Windows-10; xfconf-query -c xfwm4 -p /general/theme -s Windows-10\"" >> /etc/xdg/autostart/set-win-theme.desktop && \
-    echo "Name=Set Win Theme" >> /etc/xdg/autostart/set-win-theme.desktop
-RUN echo '<meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=true&resize=scale">' > /usr/share/novnc/index.html && \
-    echo '<meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=true&resize=scale">' > /usr/share/novnc/vnc_lite.html
-RUN touch /root/.Xauthority
-EXPOSE 5901
-EXPOSE 6080
-CMD bash -c "vncserver -localhost no -SecurityTypes None -geometry 1920x1080 --I-KNOW-THIS-IS-INSECURE && openssl req -new -subj "/C=JP" -x509 -days 365 -nodes -out self.pem -keyout self.pem && websockify -D --web=/usr/share/novnc/ --cert=self.pem 6080 localhost:5901 && tail -f /dev/null"
+ENV TZ=UTC
+
+# الحزم الأساسية و XFCE و VNC
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    xfce4 \
+    xfce4-goodies \
+    tigervnc-standalone-server \
+    novnc \
+    websockify \
+    sudo \
+    xterm \
+    dbus-x11 \
+    x11-utils \
+    x11-xserver-utils \
+    x11-apps \
+    vim \
+    net-tools \
+    curl \
+    wget \
+    git \
+    tzdata \
+    openssl \
+    software-properties-common \
+    ca-certificates \
+    firefox \
+    xubuntu-icon-theme && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# تثبيت ثيم Windows 10
+RUN git clone --depth 1 \
+    https://github.com/B00merang-Project/Windows-10.git \
+    /usr/share/themes/Windows-10 && \
+    git clone --depth 1 \
+    https://github.com/B00merang-Project/Windows-10-Icons.git \
+    /usr/share/icons/Windows-10
+
+# إعداد VNC و XFCE
+RUN mkdir -p /root/.vnc && \
+    printf '%s\n' \
+    '#!/bin/sh' \
+    'unset SESSION_MANAGER' \
+    'unset DBUS_SESSION_BUS_ADDRESS' \
+    'export XDG_CURRENT_DESKTOP=XFCE' \
+    'export XDG_CONFIG_DIRS=/etc/xdg/xdg-xfce:/etc/xdg' \
+    'startxfce4 &' \
+    > /root/.vnc/xstartup && \
+    chmod +x /root/.vnc/xstartup
+
+# تفعيل الثيم بدون تحميل أي خلفية خارجية
+RUN mkdir -p /etc/xdg/autostart && \
+    printf '%s\n' \
+    '[Desktop Entry]' \
+    'Type=Application' \
+    'Name=Set XFCE Theme' \
+    'Exec=sh -c "xfconf-query -c xsettings -p /Net/ThemeName -s Windows-10; xfconf-query -c xsettings -p /Net/IconThemeName -s Windows-10; xfconf-query -c xfwm4 -p /general/theme -s Windows-10"' \
+    'OnlyShowIn=XFCE;' \
+    > /etc/xdg/autostart/set-theme.desktop
+
+# صفحة noVNC تفتح الاتصال تلقائيًا
+RUN printf '%s\n' \
+    '<meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=true&resize=scale">' \
+    > /usr/share/novnc/index.html
+
+EXPOSE 5901 6080
+
+CMD ["bash", "-c", "rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1; vncserver :1 -localhost no -SecurityTypes None -geometry 1920x1080; openssl req -new -newkey rsa:2048 -nodes -x509 -subj '/C=US/ST=State/L=City/O=Docker/CN=localhost' -keyout /tmp/novnc.pem -out /tmp/novnc.pem -days 365; websockify --web=/usr/share/novnc --cert=/tmp/novnc.pem 6080 localhost:5901"]
