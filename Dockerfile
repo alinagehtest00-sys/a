@@ -70,15 +70,14 @@ EXPOSE 5901 6080
 
 CMD ["bash", "-c", "\
   mkdir -p /root/.vnc && \
-  rm -f /tmp/.X1-lock && \
-  rm -f /tmp/.X11-unix/X1 && \
+  rm -f /tmp/.X1-lock /tmp/.X11-unix/X1 && \
   tigervncserver :1 \
     -localhost no \
     -SecurityTypes None \
     -geometry 1920x1080 \
-    -depth 24 && \
+    -depth 24 \
+    --I-KNOW-THIS-IS-INSECURE && \
   sleep 3 && \
-  ss -lntp | grep ':5901' && \
   openssl req -new -newkey rsa:2048 -nodes -x509 \
     -subj '/C=US/ST=State/L=City/O=Docker/CN=localhost' \
     -keyout /tmp/novnc.pem \
@@ -89,4 +88,5 @@ CMD ["bash", "-c", "\
     --cert=/tmp/novnc.pem \
     6080 localhost:5901 \
 "]
+
 
